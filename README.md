@@ -10,7 +10,7 @@ a happy little sandbox for not-so-happy files
 * A Linux host with KVM support (for performance)
 * A Windows `.qcow2` disk image
 
-## ? How to Use
+## → How to Use
 
 1.  **Get Your VM Image:**
     * Download a Windows evaluation VM from the [Microsoft Developer website](https://developer.microsoft.com/en-us/windows/downloads/virtual-machines/).
