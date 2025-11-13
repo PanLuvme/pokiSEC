@@ -1,5 +1,4 @@
-![logo](https://ibb.co/9k5wBSj3)
-
+![logo](https://i.postimg.cc/wBgLFnjq/pokisecreadme.png)
 
 a happy little sandbox for not-so-happy files
 
