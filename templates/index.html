@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>pokiSEC Loader</title>
+    <style>
+        body { background: #0f172a; color: white; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .drop-zone { border: 2px dashed #38bdf8; padding: 50px; text-align: center; border-radius: 10px; transition: 0.3s; }
+        .drop-zone.dragover { background: #1e293b; border-color: #22c55e; }
+        #progress-container { width: 100%; background: #333; margin-top: 20px; display: none; height: 10px; border-radius: 5px; }
+        #progress-bar { width: 0%; height: 100%; background: #38bdf8; border-radius: 5px; transition: width 0.2s; }
+        h1 { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div class="drop-zone" id="drop-zone">
+            <h1>📦 pokiSEC Setup</h1>
+            <p>Drag your Windows ISO here to initialize the sandbox.</p>
+        </div>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <p id="status"></p>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const status = document.getElementById('status');
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            uploadFile(file);
+        });
+
+        function uploadFile(file) {
+            document.getElementById('progress-container').style.display = 'block';
+            status.innerText = "Uploading " + file.name + "...";
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    document.getElementById('progress-bar').style.width = percent + '%';
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status == 200) {
+                    status.innerText = "Converting... Please wait.";
+                    // Start polling for readiness
+                    checkStatus();
+                } else {
+                    status.innerText = "Error uploading.";
+                }
+            };
+            xhr.send(formData);
+        }
+
+        function checkStatus() {
+            setInterval(() => {
+                fetch('/status').then(r => r.json()).then(data => {
+                    if (data.ready) {
+                        status.innerText = "Booting Windows...";
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else if (data.converting) {
+                        status.innerText = "Optimizing Disk Image (Converting to QCOW2)...";
+                    }
+                });
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
