@@ -1,33 +1,55 @@
 #!/bin/bash
 set -e
 
-# Define paths
 IMAGE_PATH="/sandbox/windows.qcow2"
+ARCH=$(uname -m)
 
 # === STAGE 1: SETUP (Flask) ===
 if [ ! -f "$IMAGE_PATH" ]; then
     echo "❌ No Windows image found."
     echo "🚀 Starting Web Uploader on port 8080..."
-    
-    # Run Flask. It will handle upload -> convert -> then EXIT when done.
     python3 /app/app.py
-    
-    echo "✅ Setup complete. Image is ready."
 fi
 
-# === STAGE 2: RUN (QEMU + NoVNC) ===
-echo "🔥 Starting Windows Sandbox..."
+# === STAGE 2: RUN (Architecture Detection) ===
+echo "🔥 Starting Windows Sandbox on architecture: $ARCH"
 
-# Start NoVNC (Web Interface) pointing to localhost:5900 (VNC)
-# We launch it in background so we can run QEMU
+# Start NoVNC in background
 /usr/share/novnc/utils/launch.sh --vnc localhost:5900 --listen 8080 &
 
-# Start QEMU (The VM)
-qemu-system-x86_64 \
-    -m 4G \
-    -cpu host \
-    -smp 2 \
-    -enable-kvm \
-    -drive file=${IMAGE_PATH},format=qcow2 \
-    -vnc :0 \
-    -net nic -net user
+if [ "$ARCH" == "aarch64" ]; then
+    # === MAC M1/M2/M3 (ARM) MODE ===
+    # ARM Windows requires specific UEFI firmware (OVMF) to boot
+    echo "🍎 Mac/ARM detected. Using qemu-system-aarch64..."
+    
+    qemu-system-aarch64 \
+        -nographic \
+        -M virt,highmem=off \
+        -cpu host \
+        -accel kvm \
+        -m 4G \
+        -smp 2 \
+        -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
+        -device ramfb \
+        -device qemu-xhci \
+        -device usb-kbd \
+        -device usb-tablet \
+        -drive file=${IMAGE_PATH},format=qcow2,if=virtio \
+        -vnc :0
+
+elif [ "$ARCH" == "x86_64" ]; then
+    # === INTEL/AMD MODE ===
+    echo "💻 Intel/AMD detected. Using qemu-system-x86_64..."
+    
+    qemu-system-x86_64 \
+        -m 4G \
+        -cpu host \
+        -smp 2 \
+        -enable-kvm \
+        -drive file=${IMAGE_PATH},format=qcow2 \
+        -vnc :0 \
+        -net nic -net user
+else
+    echo "❌ Unsupported Architecture: $ARCH"
+    exit 1
+fi
