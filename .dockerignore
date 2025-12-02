@@ -1,0 +1,13 @@
+# Ignore large disk images
+*.qcow2
+*.iso
+
+# Ignore git history
+.git
+.gitignore
+
+# Ignore mac system files
+.DS_Store
+
+# Ignore local data folders
+pokisec-data/
