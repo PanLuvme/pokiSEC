@@ -4,18 +4,20 @@
     <title>pokiSEC Loader</title>
     <style>
         body { background: #0f172a; color: white; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .drop-zone { border: 2px dashed #38bdf8; padding: 50px; text-align: center; border-radius: 10px; transition: 0.3s; }
+        .drop-zone { border: 2px dashed #38bdf8; padding: 50px; text-align: center; border-radius: 10px; transition: 0.3s; width: 400px; }
         .drop-zone.dragover { background: #1e293b; border-color: #22c55e; }
         #progress-container { width: 100%; background: #333; margin-top: 20px; display: none; height: 10px; border-radius: 5px; }
         #progress-bar { width: 0%; height: 100%; background: #38bdf8; border-radius: 5px; transition: width 0.2s; }
         h1 { margin-bottom: 10px; }
+        .note { font-size: 0.8em; color: #94a3b8; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div class="drop-zone" id="drop-zone">
             <h1>📦 pokiSEC Setup</h1>
-            <p>Drag your Windows ISO here to initialize the sandbox.</p>
+            <p>Drag your <b>.qcow2</b> disk image here.</p>
+            <p class="note">Must be pre-converted (ARM64 for Mac, x64 for PC)</p>
         </div>
         <div id="progress-container">
             <div id="progress-bar"></div>
@@ -34,6 +36,11 @@
             e.preventDefault();
             dropZone.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
+            
+            if (!file.name.endsWith('.qcow2')) {
+                alert("Please upload a .qcow2 file!");
+                return;
+            }
             uploadFile(file);
         });
 
@@ -55,27 +62,14 @@
 
             xhr.onload = () => {
                 if (xhr.status == 200) {
-                    status.innerText = "Converting... Please wait.";
-                    // Start polling for readiness
-                    checkStatus();
+                    status.innerText = "Upload Complete. Booting Sandbox...";
+                    // Wait 3 seconds for container to restart QEMU, then refresh
+                    setTimeout(() => window.location.reload(), 3000);
                 } else {
                     status.innerText = "Error uploading.";
                 }
             };
             xhr.send(formData);
-        }
-
-        function checkStatus() {
-            setInterval(() => {
-                fetch('/status').then(r => r.json()).then(data => {
-                    if (data.ready) {
-                        status.innerText = "Booting Windows...";
-                        setTimeout(() => window.location.reload(), 2000);
-                    } else if (data.converting) {
-                        status.innerText = "Optimizing Disk Image (Converting to QCOW2)...";
-                    }
-                });
-            }, 2000);
         }
     </script>
 </body>
