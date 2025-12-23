@@ -28,6 +28,7 @@
     <script>
         const dropZone = document.getElementById('drop-zone');
         const status = document.getElementById('status');
+        const progressBar = document.getElementById('progress-bar');
 
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
@@ -46,7 +47,7 @@
 
         function uploadFile(file) {
             document.getElementById('progress-container').style.display = 'block';
-            status.innerText = "Uploading " + file.name + "...";
+            status.innerText = "Starting Upload: " + file.name + "...";
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/upload', true);
@@ -56,17 +57,26 @@
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
                     const percent = (e.loaded / e.total) * 100;
-                    document.getElementById('progress-bar').style.width = percent + '%';
+                    
+                    progressBar.style.width = percent + '%';
+
+                    if (percent < 99) {
+                        status.innerText = `Uploading to Container: ${Math.round(percent)}%`;
+                    } else {
+                        progressBar.style.backgroundColor = '#22c55e'; 
+                        status.innerHTML = "<b>Network Transfer Complete.</b><br>Saving to Disk (Do NOT Close)...";
+                    }
                 }
             };
 
             xhr.onload = () => {
                 if (xhr.status == 200) {
-                    status.innerText = "Upload Complete. Booting Sandbox...";
-                    // Wait 3 seconds for container to restart QEMU, then refresh
-                    setTimeout(() => window.location.reload(), 3000);
+                    status.innerText = "Success! Booting Sandbox...";
+                    // Wait 2 seconds for the server to die and QEMU to take over
+                    setTimeout(() => window.location.reload(), 2000);
                 } else {
-                    status.innerText = "Error uploading.";
+                    status.innerText = "Error uploading. Check Docker stats.";
+                    progressBar.style.backgroundColor = '#ef4444'; 
                 }
             };
             xhr.send(formData);
