@@ -11,7 +11,7 @@ if [ ! -f "$IMAGE_PATH" ]; then
     python3 /app/app.py
 fi
 
-# === STAGE 2: RUN (Architecture Detection) ===
+# === STAGE 2: RUN ===
 echo "🔥 Starting Windows Sandbox on architecture: $ARCH"
 
 # Start NoVNC in background
@@ -19,16 +19,16 @@ echo "🔥 Starting Windows Sandbox on architecture: $ARCH"
 
 if [ "$ARCH" == "aarch64" ]; then
     # === MAC M1/M2/M3 (ARM) MODE ===
-    # ARM Windows requires specific UEFI firmware (OVMF) to boot
-    echo "🍎 Mac/ARM detected. Using qemu-system-aarch64..."
+    echo "🍎 Mac/ARM detected. Using Software Emulation (TCG)..."
+    echo "⚠️  NOTE: Performance will be slower on Mac Docker due to lack of nested virtualization."
     
+    # FIX: Removed "-accel kvm" and changed cpu to "max" for best emulation speed
     qemu-system-aarch64 \
         -nographic \
         -M virt,highmem=off \
-        -cpu host \
-        -accel kvm \
+        -cpu max \
         -m 4G \
-        -smp 2 \
+        -smp 4 \
         -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
         -device ramfb \
         -device qemu-xhci \
@@ -38,8 +38,8 @@ if [ "$ARCH" == "aarch64" ]; then
         -vnc :0
 
 elif [ "$ARCH" == "x86_64" ]; then
-    # === INTEL/AMD MODE ===
-    echo "💻 Intel/AMD detected. Using qemu-system-x86_64..."
+    # === INTEL/AMD MODE (Linux/Windows) ===
+    echo "💻 Intel/AMD detected. Using Native KVM..."
     
     qemu-system-x86_64 \
         -m 4G \
@@ -48,7 +48,8 @@ elif [ "$ARCH" == "x86_64" ]; then
         -enable-kvm \
         -drive file=${IMAGE_PATH},format=qcow2 \
         -vnc :0 \
-        -net nic -net user
+        -net nic -net user \
+        -usb -device usb-tablet
 else
     echo "❌ Unsupported Architecture: $ARCH"
     exit 1
