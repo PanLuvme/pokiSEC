@@ -12,17 +12,15 @@ if [ ! -f "$IMAGE_PATH" ]; then
 fi
 
 # === STAGE 2: RUN ===
-echo "🔥 Starting Windows Sandbox on architecture: $ARCH"
+echo "🔥 Starting Windows 11 Sandbox on architecture: $ARCH"
 
 /usr/share/novnc/utils/launch.sh --vnc localhost:5900 --listen 8080 &
 
 if [ "$ARCH" == "aarch64" ]; then
     # === MAC M1/M2/M3 (ARM) MODE ===
     echo "🍎 Mac/ARM detected. Using Software Emulation (TCG)..."
-    echo "⚠️  NOTE: Performance will be slower on Mac Docker."
-    
-    # FIX: Using 'usb-storage' instead of 'virtio' to prevent BSOD
-    qemu-system-aarch64 \
+    echo "⚠️  NOTE: Windows 11 boot may take 5-10 minutes on the first run."
+        qemu-system-aarch64 \
         -nographic \
         -M virt,highmem=off \
         -cpu max \
@@ -34,7 +32,7 @@ if [ "$ARCH" == "aarch64" ]; then
         -device usb-kbd \
         -device usb-tablet \
         -drive file=${IMAGE_PATH},format=qcow2,if=none,id=hd0 \
-        -device usb-storage,drive=hd0 \
+        -device nvme,drive=hd0,serial=1234 \
         -vnc :0
 
 elif [ "$ARCH" == "x86_64" ]; then
