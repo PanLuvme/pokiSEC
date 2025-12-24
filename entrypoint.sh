@@ -12,17 +12,14 @@ fi
 
 echo "🔥 Starting Windows Sandbox on architecture: $ARCH"
 
-# Start NoVNC in background
-/usr/share/novnc/utils/launch.sh --vnc localhost:5900 --listen 8080 &
+websockify --web=/usr/share/novnc --wrap-mode=ignore 8080 localhost:5900 &
 
 if [ "$ARCH" == "aarch64" ]; then
-    # MAC M1/M2/M3 (ARM) MODE:
-    echo "🍎 Mac/ARM detected. Using qemu-system-aarch64..."
     
     qemu-system-aarch64 \
         -nographic \
-        -M virt \
-        -cpu host \
+        -M virt,highmem=on \
+        -cpu max \
         -accel tcg \
         -m 4G \
         -smp 4 \
@@ -36,8 +33,6 @@ if [ "$ARCH" == "aarch64" ]; then
         -vnc :0
 
 elif [ "$ARCH" == "x86_64" ]; then
-    # INTEL/AMD MODE:
-    echo "💻 Intel/AMD detected. Using qemu-system-x86_64..."
     
     qemu-system-x86_64 \
         -m 4G \
