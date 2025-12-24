@@ -11,6 +11,10 @@
 
 Safely detonate malware, test suspicious executables, or analyze phishing links. When you're done, just close the container—**poof!** The entire environment is wiped clean, leaving no trace on your host machine.
 
+## ❓ How to use
+
+
+
 ---
 
 ## 🏗 Architecture
