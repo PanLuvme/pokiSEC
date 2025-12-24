@@ -1,53 +1,53 @@
 #!/bin/bash
-set -e
 
-IMAGE_PATH="/sandbox/windows.qcow2"
-ARCH=$(uname -m)
+OS_IMAGE="/data/windows.qcow2"
+PAYLOAD_DIR="/payloads_staging"
+PAYLOAD_ISO="/tmp/payloads.iso"
+SIGNAL_FILE="/tmp/boot_signal"
 
-# === STAGE 1: SETUP (Flask) ===
-if [ ! -f "$IMAGE_PATH" ]; then
-    echo "❌ No Windows image found."
-    echo "🚀 Starting Web Uploader on port 8080..."
-    python3 /app/app.py
+python3 /app/app.py &
+FLASK_PID=$!
+
+while [ ! -f "$SIGNAL_FILE" ]; do
+    sleep 1
+done
+
+sleep 2
+
+DISK_ARGS="-drive file=${OS_IMAGE},format=qcow2"
+
+if [ "$(ls -A $PAYLOAD_DIR)" ]; then
+    genisoimage -R -J -o "$PAYLOAD_ISO" "$PAYLOAD_DIR"
+    DISK_ARGS="$DISK_ARGS -drive file=$PAYLOAD_ISO,media=cdrom,readonly=on"
 fi
 
-# === STAGE 2: RUN ===
-echo "🔥 Starting Windows 11 Sandbox on architecture: $ARCH"
+ARCH=$(uname -m)
 
-/usr/share/novnc/utils/launch.sh --vnc localhost:5900 --listen 8080 &
+websockify -D --web=/usr/share/novnc/ 8080 localhost:5900
 
 if [ "$ARCH" == "aarch64" ]; then
-    # === MAC M1/M2/M3 (ARM) MODE ===
-    echo "🍎 Mac/ARM detected. Using Software Emulation (TCG)..."
-    echo "⚠️  NOTE: Windows 11 boot may take 5-10 minutes on the first run."
-        qemu-system-aarch64 \
-        -nographic \
+    qemu-system-aarch64 \
         -M virt,highmem=off \
+        -accel tcg \
         -cpu max \
-        -m 4G \
         -smp 4 \
-        -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
+        -m 4G \
         -device ramfb \
         -device qemu-xhci \
         -device usb-kbd \
         -device usb-tablet \
-        -drive file=${IMAGE_PATH},format=qcow2,if=none,id=hd0 \
-        -device nvme,drive=hd0,serial=1234 \
-        -vnc :0
+        $DISK_ARGS \
+        -vnc :0 \
+        -nographic
 
 elif [ "$ARCH" == "x86_64" ]; then
-    # === INTEL/AMD MODE ===
-    echo "💻 Intel/AMD detected..."
     qemu-system-x86_64 \
-        -m 4G \
         -cpu host \
-        -smp 2 \
         -enable-kvm \
-        -drive file=${IMAGE_PATH},format=qcow2 \
+        -m 4G \
+        -smp 4 \
+        -vga std \
+        $DISK_ARGS \
         -vnc :0 \
-        -net nic -net user \
-        -usb -device usb-tablet
-else
-    echo "❌ Unsupported Architecture: $ARCH"
-    exit 1
+        -nographic
 fi
