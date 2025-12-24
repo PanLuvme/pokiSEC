@@ -13,7 +13,7 @@ Safely detonate malware, test suspicious executables, or analyze phishing links.
 
 ## ❓ How to use
 
-
+check recent releases
 
 ---
 
