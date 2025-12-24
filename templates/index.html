@@ -1,85 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>pokiSEC Loader</title>
     <style>
-        body { background: #0f172a; color: white; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .drop-zone { border: 2px dashed #38bdf8; padding: 50px; text-align: center; border-radius: 10px; transition: 0.3s; width: 400px; }
-        .drop-zone.dragover { background: #1e293b; border-color: #22c55e; }
-        #progress-container { width: 100%; background: #333; margin-top: 20px; display: none; height: 10px; border-radius: 5px; }
-        #progress-bar { width: 0%; height: 100%; background: #38bdf8; border-radius: 5px; transition: width 0.2s; }
-        h1 { margin-bottom: 10px; }
-        .note { font-size: 0.8em; color: #94a3b8; margin-top: 15px; }
+        body { font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; text-align: center; padding: 50px; }
+        h1 { font-size: 2.5em; margin-bottom: 40px; }
+        .container { display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; }
+        
+        .dropzone {
+            border: 2px dashed #00ff00;
+            width: 300px;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+        .dropzone:hover { background: #003300; }
+        .dropzone p { margin: 10px; pointer-events: none; }
+        
+        #btn-launch {
+            background: #ff0000;
+            color: white;
+            font-size: 1.5em;
+            padding: 15px 40px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            display: none;
+        }
+        #btn-launch:hover { background: #cc0000; }
+
+        .status { margin-top: 10px; font-size: 0.8em; color: #aaa; }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <div class="drop-zone" id="drop-zone">
-            <h1>📦 pokiSEC Setup</h1>
-            <p>Drag your <b>.qcow2</b> disk image here.</p>
-            <p class="note">Must be pre-converted (ARM64 for Mac, x64 for PC)</p>
+
+    <h1>pokiSEC :: Detonation Lab</h1>
+
+    <div class="container">
+        <div id="drop-os" class="dropzone" onclick="document.getElementById('file-os').click()">
+            <h3>1. Target Environment</h3>
+            <p>Drop <b>windows.qcow2</b> here</p>
+            <span id="status-os" class="status">Waiting...</span>
+            <input type="file" id="file-os" hidden accept=".qcow2,.img">
         </div>
-        <div id="progress-container">
-            <div id="progress-bar"></div>
+
+        <div id="drop-payload" class="dropzone" onclick="document.getElementById('file-payload').click()">
+            <h3>2. Payloads (Optional)</h3>
+            <p>Drop malware / tools here</p>
+            <span id="status-payload" class="status">0 files staged</span>
+            <input type="file" id="file-payload" hidden multiple>
         </div>
-        <p id="status"></p>
     </div>
 
+    <button id="btn-launch" onclick="launchVM()">⚠️ DETONATE ⚠️</button>
+
     <script>
-        const dropZone = document.getElementById('drop-zone');
-        const status = document.getElementById('status');
-        const progressBar = document.getElementById('progress-bar');
-
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
+        const fileOs = document.getElementById('file-os');
+        fileOs.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
             
-            if (!file.name.endsWith('.qcow2')) {
-                alert("Please upload a .qcow2 file!");
-                return;
-            }
-            uploadFile(file);
-        });
-
-        function uploadFile(file) {
-            document.getElementById('progress-container').style.display = 'block';
-            status.innerText = "Starting Upload: " + file.name + "...";
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/upload', true);
+            document.getElementById('status-os').innerText = "Uploading " + file.name + "...";
             const formData = new FormData();
             formData.append('file', file);
+            
+            await fetch('/upload_os', { method: 'POST', body: formData });
+            
+            document.getElementById('status-os').innerText = "✅ READY";
+            document.getElementById('drop-os').style.borderColor = "#fff";
+            document.getElementById('btn-launch').style.display = "inline-block";
+        });
 
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    
-                    progressBar.style.width = percent + '%';
+        const filePayload = document.getElementById('file-payload');
+        filePayload.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            
+            document.getElementById('status-payload').innerText = "Staging " + files.length + " files...";
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files[]', files[i]);
+            }
+            
+            const res = await fetch('/upload_payload', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            document.getElementById('status-payload').innerText = "✅ " + data.count + " files staged (Drive D:)";
+        });
 
-                    if (percent < 99) {
-                        status.innerText = `Uploading to Container: ${Math.round(percent)}%`;
-                    } else {
-                        progressBar.style.backgroundColor = '#22c55e'; 
-                        status.innerHTML = "<b>Network Transfer Complete.</b><br>Saving to Disk (Do NOT Close)...";
-                    }
-                }
-            };
-
-            xhr.onload = () => {
-                if (xhr.status == 200) {
-                    status.innerText = "Success! Booting Sandbox...";
-                    // Wait 2 seconds for the server to die and QEMU to take over
-                    setTimeout(() => window.location.reload(), 2000);
-                } else {
-                    status.innerText = "Error uploading. Check Docker stats.";
-                    progressBar.style.backgroundColor = '#ef4444'; 
-                }
-            };
-            xhr.send(formData);
+        async function launchVM() {
+            document.body.innerHTML = "<h1>🚀 BOOTING SANDBOX...</h1><p>Please wait for the VNC connection.</p>";
+            await fetch('/launch', { method: 'POST' });
+            setTimeout(() => location.reload(), 5000); 
         }
     </script>
 </body>
