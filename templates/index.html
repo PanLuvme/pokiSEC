@@ -61,6 +61,7 @@
     <button id="btn-launch" onclick="launchVM()">⚠️ DETONATE ⚠️</button>
 
     <script>
+        // OS UPLOAD LOGIC
         const fileOs = document.getElementById('file-os');
         fileOs.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -77,6 +78,7 @@
             document.getElementById('btn-launch').style.display = "inline-block";
         });
 
+        // PAYLOAD UPLOAD LOGIC
         const filePayload = document.getElementById('file-payload');
         filePayload.addEventListener('change', async (e) => {
             const files = e.target.files;
@@ -95,9 +97,12 @@
         });
 
         async function launchVM() {
-            document.body.innerHTML = "<h1>🚀 BOOTING SANDBOX...</h1><p>Please wait for the VNC connection.</p>";
+            document.body.innerHTML = "<h1>🚀 BOOTING SANDBOX...</h1><p>Initializing QEMU... Switching to VNC in 10s.</p>";
+            
             await fetch('/launch', { method: 'POST' });
-            setTimeout(() => location.reload(), 5000); 
+            setTimeout(() => {
+                window.location.href = "/vnc.html?resize=scale&autoconnect=true";
+            }, 10000); 
         }
     </script>
 </body>
