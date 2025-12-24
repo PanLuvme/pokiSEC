@@ -3,88 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <title>pokiSEC Loader</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    
     <style>
-        body { font-family: 'Courier New', monospace; background: #1a1a1a; color: #00ff00; text-align: center; padding: 50px; }
-        h1 { font-size: 2.5em; margin-bottom: 40px; }
-        .container { display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; }
-        
-        .dropzone {
-            border: 2px dashed #00ff00;
-            width: 300px;
-            height: 200px;
+        :root {
+            --bg-color: #333446;
+            --box-bg: #3d3e52;
+            --text-color: #ffffff;
+            --accent-color: #61afef;
+            --border-color: #6c7086;
+            --success-color: #98c379;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
-            transition: background 0.3s;
-            cursor: pointer;
+            height: 100vh;
         }
-        .dropzone:hover { background: #003300; }
-        .dropzone p { margin: 10px; pointer-events: none; }
-        
-        #btn-launch {
-            background: #ff0000;
-            color: white;
-            font-size: 1.5em;
-            padding: 15px 40px;
-            border: none;
+
+        h1 {
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 50px;
+            font-size: 1.8rem;
+            color: var(--text-color);
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            max-width: 800px;
+            justify-content: center;
+        }
+
+        .dropzone {
+            flex: 1;
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
             cursor: pointer;
-            border-radius: 5px;
+            color: #a5b0c5;
+        }
+
+        .dropzone:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-color);
+        }
+
+        .dropzone.active {
+            border-color: var(--success-color);
+            background: rgba(152, 195, 121, 0.05);
+        }
+
+        .icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+
+        h3 {
+            font-size: 0.9rem;
+            margin: 0;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-color);
+        }
+
+        p {
+            font-size: 0.8rem;
+            margin-top: 8px;
+            opacity: 0.6;
+        }
+
+        .status {
+            margin-top: 15px;
+            font-size: 0.75rem;
+            color: var(--accent-color);
+        }
+
+        #btn-launch {
+            margin-top: 40px;
+            background: var(--text-color);
+            color: var(--bg-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            padding: 15px 50px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.1s;
             display: none;
         }
-        #btn-launch:hover { background: #cc0000; }
 
-        .status { margin-top: 10px; font-size: 0.8em; color: #aaa; }
+        #btn-launch:hover {
+            transform: scale(1.02);
+            background: #e6e6e6;
+        }
+
+        .loader-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
 
-    <h1>pokiSEC :: Detonation Lab</h1>
+    <div id="main-ui">
+        <h1>pokiSEC LOADER</h1>
 
-    <div class="container">
-        <div id="drop-os" class="dropzone" onclick="document.getElementById('file-os').click()">
-            <h3>1. Target Environment</h3>
-            <p>Drop <b>windows.qcow2</b> here</p>
-            <span id="status-os" class="status">Waiting...</span>
-            <input type="file" id="file-os" hidden accept=".qcow2,.img">
+        <div class="container">
+            <div id="drop-os" class="dropzone" onclick="document.getElementById('file-os').click()">
+                <div class="icon">💿</div>
+                <h3>System Image</h3>
+                <p>Drop windows.qcow2 here</p>
+                <span id="status-os" class="status"></span>
+                <input type="file" id="file-os" hidden accept=".qcow2,.img">
+            </div>
+
+            <div id="drop-payload" class="dropzone" onclick="document.getElementById('file-payload').click()">
+                <div class="icon">📦</div>
+                <h3>Payloads</h3>
+                <p>Drop files to inject (D:)</p>
+                <span id="status-payload" class="status"></span>
+                <input type="file" id="file-payload" hidden multiple>
+            </div>
         </div>
 
-        <div id="drop-payload" class="dropzone" onclick="document.getElementById('file-payload').click()">
-            <h3>2. Payloads (Optional)</h3>
-            <p>Drop malware / tools here</p>
-            <span id="status-payload" class="status">0 files staged</span>
-            <input type="file" id="file-payload" hidden multiple>
-        </div>
+        <button id="btn-launch" onclick="launchVM()">LAUNCH SANDBOX</button>
     </div>
 
-    <button id="btn-launch" onclick="launchVM()">⚠️ DETONATE ⚠️</button>
+    <div id="loader-screen" class="loader-screen">
+        <h1>INITIALIZING...</h1>
+        <p>Starting QEMU engine. Redirecting to VNC in <span id="timer">10</span>s.</p>
+    </div>
 
     <script>
-        // OS UPLOAD LOGIC
         const fileOs = document.getElementById('file-os');
+        const dropOs = document.getElementById('drop-os');
+
         fileOs.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
             
-            document.getElementById('status-os').innerText = "Uploading " + file.name + "...";
+            document.getElementById('status-os').innerText = "Uploading...";
             const formData = new FormData();
             formData.append('file', file);
             
             await fetch('/upload_os', { method: 'POST', body: formData });
             
-            document.getElementById('status-os').innerText = "✅ READY";
-            document.getElementById('drop-os').style.borderColor = "#fff";
-            document.getElementById('btn-launch').style.display = "inline-block";
+            document.getElementById('status-os').innerText = "READY";
+            dropOs.classList.add('active');
+            dropOs.querySelector('p').innerText = file.name;
+            document.getElementById('btn-launch').style.display = "block";
         });
 
-        // PAYLOAD UPLOAD LOGIC
         const filePayload = document.getElementById('file-payload');
+        const dropPayload = document.getElementById('drop-payload');
+
         filePayload.addEventListener('change', async (e) => {
             const files = e.target.files;
             if (files.length === 0) return;
             
-            document.getElementById('status-payload').innerText = "Staging " + files.length + " files...";
+            document.getElementById('status-payload').innerText = "Bundling...";
             const formData = new FormData();
             for (let i = 0; i < files.length; i++) {
                 formData.append('files[]', files[i]);
@@ -93,13 +191,24 @@
             const res = await fetch('/upload_payload', { method: 'POST', body: formData });
             const data = await res.json();
             
-            document.getElementById('status-payload').innerText = "✅ " + data.count + " files staged (Drive D:)";
+            dropPayload.classList.add('active');
+            document.getElementById('status-payload').innerText = data.count + " FILES STAGED";
         });
 
         async function launchVM() {
-            document.body.innerHTML = "<h1>🚀 BOOTING SANDBOX...</h1><p>Initializing QEMU... Switching to VNC in 10s.</p>";
+            document.getElementById('main-ui').style.display = 'none';
+            document.getElementById('loader-screen').style.display = 'flex';
             
+            let count = 10;
+            const timerSpan = document.getElementById('timer');
+            const interval = setInterval(() => {
+                count--;
+                timerSpan.innerText = count;
+                if(count <= 0) clearInterval(interval);
+            }, 1000);
+
             await fetch('/launch', { method: 'POST' });
+            
             setTimeout(() => {
                 window.location.href = "/vnc.html?resize=scale&autoconnect=true";
             }, 10000); 
