@@ -27,7 +27,7 @@ websockify -D --web=/usr/share/novnc/ 8080 localhost:5900
 
 if [ "$ARCH" == "aarch64" ]; then
     qemu-system-aarch64 \
-        -M virt,highmem=off \
+        -M virt \
         -accel tcg \
         -cpu max \
         -smp 4 \
