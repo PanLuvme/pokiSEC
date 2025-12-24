@@ -1,58 +1,53 @@
 #!/bin/bash
+set -e
 
-OS_IMAGE="/data/windows.qcow2"
-PAYLOAD_DIR="/payloads_staging"
-PAYLOAD_ISO="/tmp/payloads.iso"
-SIGNAL_FILE="/tmp/boot_signal"
-
-# Start the Web Interface
-python3 /app/app.py &
-
-# Wait for the interface to signal boot
-while [ ! -f "$SIGNAL_FILE" ]; do
-    sleep 1
-done
-sleep 2
-
-# default disk args
-DISK_ARGS="-drive file=${OS_IMAGE},format=qcow2"
-
-# If payloads exist, bundle them and add the CD-ROM drive
-if [ "$(ls -A $PAYLOAD_DIR)" ]; then
-    genisoimage -R -J -o "$PAYLOAD_ISO" "$PAYLOAD_DIR"
-    DISK_ARGS="$DISK_ARGS -drive file=$PAYLOAD_ISO,media=cdrom,readonly=on"
-fi
-
+IMAGE_PATH="/sandbox/windows.qcow2"
 ARCH=$(uname -m)
 
-# Start VNC Server
-websockify -D --web=/usr/share/novnc/ 8080 localhost:5900
+if [ ! -f "$IMAGE_PATH" ]; then
+    echo "❌ No Windows image found."
+    echo "🚀 Starting Web Uploader on port 8080..."
+    python3 /app/app.py
+fi
+
+echo "🔥 Starting Windows Sandbox on architecture: $ARCH"
+
+# Start NoVNC in background
+/usr/share/novnc/utils/launch.sh --vnc localhost:5900 --listen 8080 &
 
 if [ "$ARCH" == "aarch64" ]; then
-    # --- ARM64 CONFIG (MAC M1/M2/M3) ---
+    # MAC M1/M2/M3 (ARM) MODE:
+    echo "🍎 Mac/ARM detected. Using qemu-system-aarch64..."
+    
     qemu-system-aarch64 \
+        -nographic \
         -M virt \
+        -cpu host \
         -accel tcg \
-        -cpu max \
-        -smp 4 \
         -m 4G \
+        -smp 4 \
+        -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
         -device ramfb \
         -device qemu-xhci \
         -device usb-kbd \
         -device usb-tablet \
-        $DISK_ARGS \
-        -vnc :0 \
-        -nographic
+        -drive file=${IMAGE_PATH},format=qcow2,if=none,id=boot \
+        -device usb-storage,drive=boot \
+        -vnc :0
 
 elif [ "$ARCH" == "x86_64" ]; then
-    # --- INTEL/AMD CONFIG ---
+    # INTEL/AMD MODE:
+    echo "💻 Intel/AMD detected. Using qemu-system-x86_64..."
+    
     qemu-system-x86_64 \
-        -cpu host \
-        -enable-kvm \
         -m 4G \
-        -smp 4 \
-        -vga std \
-        $DISK_ARGS \
+        -cpu host \
+        -smp 2 \
+        -enable-kvm \
+        -drive file=${IMAGE_PATH},format=qcow2 \
         -vnc :0 \
-        -nographic
+        -net nic -net user
+else
+    echo "❌ Unsupported Architecture: $ARCH"
+    exit 1
 fi
