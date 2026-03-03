@@ -1,4 +1,4 @@
-![logo](https://i.ibb.co/ntfqCv9/pokiseeeeeeeeee.png)
+![logo](https://i.ibb.co/TBPyvpHh/pokisecc.png)
 ### 📦 A happy little sandbox for not-so-happy files.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
